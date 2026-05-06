@@ -2,8 +2,8 @@ import requests
 import datetime
 import random
 
-TELEGRAM_TOKEN = "TU_TOKEN_AQUI"
-CHAT_ID = "TU_CHAT_ID_AQUI"
+TELEGRAM_TOKEN = "8755288854:AAHRCCsk2CHmLLHDLnXYUEHK6ZWAywSVnGo"
+CHAT_ID = "8755288854"
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
