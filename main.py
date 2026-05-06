@@ -1,32 +1,28 @@
 import requests
 import datetime
-import random
 
+# 🔐 PEGA AQUÍ TUS CREDENCIALES NUEVAS (NO LAS COMPARTAS)
 TELEGRAM_TOKEN = "8755288854:AAHRCCsk2CHmLLHDLnXYUEHK6ZWAywSVnGo"
-CHAT_ID = "T8755288854"
+CHAT_ID = "8755288854"  # Ej: 123456789
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {"chat_id": CHAT_ID, "text": message}
-    requests.post(url, data=data)
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message
+    }
+    response = requests.post(url, data=data)
+
+    # Debug (para ver errores en GitHub Actions)
+    print("STATUS:", response.status_code)
+    print("RESPONSE:", response.text)
 
 def get_sentiment():
-    vix = random.randint(12, 30)
-    if vix < 15:
-        return "🟢 RISK ON"
-    elif vix < 22:
-        return "🟡 NEUTRAL"
-    else:
-        return "🔴 RISK OFF"
-
-def get_levels(asset):
-    price = random.randint(100, 1000)
-    return price + 20, price - 20
+    # Simple (luego lo mejoramos con datos reales)
+    return "🟡 NEUTRAL"
 
 def build_briefing(session):
     now = datetime.datetime.now().strftime("%H:%M")
-
-    sentiment = get_sentiment()
 
     message = f"""
 ==========================
@@ -36,7 +32,7 @@ Hora: {now}
 ==========================
 
 🧠 SENTIMIENTO
-{sentiment}
+{get_sentiment()}
 
 📰 NOTICIAS CLAVE
 - Mercado atento a inflación
@@ -44,15 +40,30 @@ Hora: {now}
 - Volatilidad en cripto
 
 📉 NIVELES CLAVE
-"""
 
-    assets = ["NSQ100", "BTC", "ORO", "DXY", "VIX", "BRENT"]
+NSQ100
+R: 18000
+S: 17500
 
-    for a in assets:
-        r, s = get_levels(a)
-        message += f"\n{a}\nR: {r}\nS: {s}\n"
+BTC
+R: 70000
+S: 65000
 
-    message += """
+ORO
+R: 2400
+S: 2300
+
+DXY
+R: 105
+S: 103
+
+VIX
+R: 20
+S: 15
+
+BRENT
+R: 85
+S: 80
 
 ⏰ EVENTOS HOY
 - Revisar calendario económico
@@ -62,12 +73,12 @@ Hora: {now}
 - Esperar confirmación
 - Evitar operar en noticias
 """
-
     return message
 
-def run(session):
-    briefing = build_briefing(session)
+def run():
+    # Puedes luego detectar sesión por horario si quieres
+    briefing = build_briefing("AUTO")
     send_telegram(briefing)
 
 if __name__ == "__main__":
-    run("Manual")
+    run()
