@@ -20,14 +20,15 @@ def price(symbol):
 
 # ---------------- SESIÓN ----------------
 def get_session():
-    hour = datetime.datetime.utcnow().hour
+    now = datetime.now(ZoneInfo("America/Santiago"))
+    hour = now.hour
 
-    if 0 <= hour < 8:
+    if 19 <= hour or hour < 2:
         return "🌏 TOKYO SESSION"
-    elif 12 <= hour < 20:
+    elif 8 <= hour < 12:
         return "🇺🇸 NEW YORK SESSION"
     else:
-        return "⏳ FUERA DE SESIÓN"
+        return "⏳ PRE-MARKET / TRANSICIÓN"
 
 # ---------------- SENTIMIENTO ----------------
 def sentiment(vix, dxy, btc):
@@ -62,7 +63,10 @@ def setup(price, r, s, sentiment):
 # ---------------- MENSAJE ----------------
 def build():
 
-    now = datetime.datetime.now().strftime("%H:%M")
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+now = datetime.now(ZoneInfo("America/Santiago")).strftime("%H:%M")
     session = get_session()
 
     # DATOS
