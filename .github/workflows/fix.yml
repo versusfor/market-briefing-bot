@@ -1,4 +1,4 @@
-name: Market Briefing Bot
+name: Market Briefing Bot V2
 
 on:
   schedule:
