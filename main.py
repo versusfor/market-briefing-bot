@@ -3,7 +3,7 @@ import datetime
 
 # 🔐 PEGA AQUÍ TUS CREDENCIALES NUEVAS (NO LAS COMPARTAS)
 TELEGRAM_TOKEN = "8774099880:AAFyVd-Id8eC4sGVztg9W0Z-1kPstLu6Hb0"
-CHAT_ID = "8774099880"  # Ej: 123456789
+CHAT_ID = "1373100163"  # Ej: 123456789
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
