@@ -20,7 +20,7 @@ TWELVE_API_KEY = "2dc0921a150b439d8aebda732d168a34"
 NEWS_API_KEY = "34551ef6b32345ceaa49cb5709f61296"
 
 # =========================================
-# TELEGRAM
+# TELEGRAM MENSAJE
 # =========================================
 
 def send(msg):
@@ -77,6 +77,22 @@ def price(symbol):
     except:
 
         return None
+
+# =========================================
+# NIVELES DINÁMICOS
+# =========================================
+
+def levels(price_now):
+
+    if price_now is None:
+
+        return None, None
+
+    resistance = round(price_now * 1.01, 2)
+
+    support = round(price_now * 0.99, 2)
+
+    return resistance, support
 
 # =========================================
 # SESIÓN
@@ -218,36 +234,42 @@ def get_news():
         ]
 
 # =========================================
-# MINI GRÁFICOS
+# GRÁFICOS REALES 15M
 # =========================================
 
-def create_chart(
-    price_now,
-    resistance,
-    support,
-    name
-):
+def create_chart(symbol, resistance, support, name):
 
     try:
 
-        if price_now is None:
+        url = (
+            f"https://api.twelvedata.com/time_series?"
+            f"symbol={symbol}"
+            f"&interval=15min"
+            f"&outputsize=20"
+            f"&apikey={TWELVE_API_KEY}"
+        )
+
+        data = requests.get(url).json()
+
+        values = data.get("values")
+
+        if values is None:
+
             return None
+
+        closes = []
+
+        for candle in reversed(values):
+
+            closes.append(
+                float(candle["close"])
+            )
 
         fig, ax = plt.subplots(
             figsize=(6,4)
         )
 
-        simulated_data = [
-
-            price_now * 0.98,
-            price_now * 0.99,
-            price_now,
-            price_now * 1.01,
-            price_now * 1.005
-
-        ]
-
-        ax.plot(simulated_data)
+        ax.plot(closes)
 
         # RESISTENCIA
         ax.axhline(
@@ -261,7 +283,7 @@ def create_chart(
             linestyle="--"
         )
 
-        ax.set_title(name)
+        ax.set_title(f"{name} 15M")
 
         file_name = f"{name}.png"
 
@@ -291,11 +313,16 @@ def build():
     # ACTIVOS
     # =====================================
 
-    vix = price("VIX")
-    dxy = price("DXY")
+    vix = price("VIXY")
+
+    dxy = price("DX")
+
     btc = price("BTC/USD")
-    nasdaq = price("IXIC")
+
+    nasdaq = price("QQQ")
+
     gold = price("XAU/USD")
+
     brent = price("BRENT")
 
     # =====================================
@@ -309,17 +336,14 @@ def build():
     )
 
     # =====================================
-    # NIVELES
+    # NIVELES DINÁMICOS
     # =====================================
 
-    nsq_r = 18000
-    nsq_s = 17500
+    nsq_r, nsq_s = levels(nasdaq)
 
-    btc_r = 70000
-    btc_s = 65000
+    btc_r, btc_s = levels(btc)
 
-    gold_r = 2400
-    gold_s = 2300
+    gold_r, gold_s = levels(gold)
 
     # =====================================
     # SETUPS
@@ -439,30 +463,29 @@ def run():
     send(build())
 
     # =====================================
-    # GRÁFICOS
+    # ACTIVOS GRÁFICOS
     # =====================================
 
     assets = [
 
-        ("IXIC", 18000, 17500, "NSQ100"),
+        ("QQQ", "NSQ100"),
 
-        ("BTC/USD", 70000, 65000, "BTC"),
+        ("BTC/USD", "BTC"),
 
-        ("XAU/USD", 2400, 2300, "ORO")
+        ("XAU/USD", "ORO")
 
     ]
 
-    for (
-        symbol,
-        resistance,
-        support,
-        name
-    ) in assets:
+    for symbol, name in assets:
 
         asset_price = price(symbol)
 
+        resistance, support = levels(
+            asset_price
+        )
+
         chart = create_chart(
-            asset_price,
+            symbol,
             resistance,
             support,
             name
