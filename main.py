@@ -146,7 +146,7 @@ def get_news():
         url = (
             "https://newsapi.org/v2/everything?"
             "q=inflation OR Federal Reserve OR interest rates OR Nasdaq OR Bitcoin"
-            "&language=en"
+            "&language=es"
             "&sortBy=publishedAt"
             "&pageSize=3"
             f"&apiKey={NEWS_API_KEY}"
