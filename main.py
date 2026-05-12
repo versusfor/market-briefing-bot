@@ -15,7 +15,7 @@ CHAT_ID = "1373100163"
 # NEWS API
 # ================================
 
-NEWS_API_KEY = "TU_API_KEY"
+NEWS_API_KEY = "34551ef6b32345ceaa49cb5709f61296"
 
 # ================================
 # TELEGRAM MENSAJES
