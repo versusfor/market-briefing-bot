@@ -4,24 +4,27 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# ================================
+# =========================================
 # TELEGRAM
-# ================================
+# =========================================
 
 TELEGRAM_TOKEN = "8774099880:AAFyVd-Id8eC4sGVztg9W0Z-1kPstLu6Hb0"
 CHAT_ID = "1373100163"
 
-# ================================
-# NEWS API
-# ================================
+# =========================================
+# API KEYS
+# =========================================
+
+TWELVE_API_KEY = "2dc0921a150b439d8aebda732d168a34"
 
 NEWS_API_KEY = "34551ef6b32345ceaa49cb5709f61296"
 
-# ================================
-# TELEGRAM MENSAJES
-# ================================
+# =========================================
+# TELEGRAM
+# =========================================
 
 def send(msg):
+
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
     requests.post(
@@ -31,6 +34,10 @@ def send(msg):
             "text": msg
         }
     )
+
+# =========================================
+# TELEGRAM FOTO
+# =========================================
 
 def send_photo(path):
 
@@ -44,53 +51,71 @@ def send_photo(path):
             data={"chat_id": CHAT_ID}
         )
 
-# ================================
-# PRECIOS
-# ================================
+# =========================================
+# TWELVE DATA PRICE
+# =========================================
 
 def price(symbol):
 
     try:
 
-        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
+        url = (
+            f"https://api.twelvedata.com/price?"
+            f"symbol={symbol}"
+            f"&apikey={TWELVE_API_KEY}"
+        )
 
-        data = requests.get(url).json()
+        response = requests.get(url).json()
 
-        return data["quoteResponse"]["result"][0]["regularMarketPrice"]
+        value = response.get("price")
+
+        if value is None:
+            return None
+
+        return float(value)
 
     except:
 
         return None
 
-# ================================
-# SESIONES
-# ================================
+# =========================================
+# SESIÓN
+# =========================================
 
 def get_session():
 
-    now = datetime.now(ZoneInfo("America/Santiago"))
+    now = datetime.now(
+        ZoneInfo("America/Santiago")
+    )
+
     hour = now.hour
 
     # TOKYO
     if 19 <= hour or hour < 2:
+
         return "🌏 TOKYO SESSION"
 
     # NEW YORK
     elif 8 <= hour < 12:
+
         return "🇺🇸 NEW YORK SESSION"
 
     else:
+
         return "⏳ PRE-MARKET / TRANSICIÓN"
 
-# ================================
-# CONTEXTO MERCADO
-# ================================
+# =========================================
+# CONTEXTO
+# =========================================
 
 def sentiment(vix, dxy, btc):
 
     if None in (vix, dxy, btc):
 
-        return "🟡 Mercado sin claridad. Esperar confirmación antes de operar."
+        return (
+            "🟡 Mercado sin claridad.\n"
+            "Esperar confirmación."
+        )
 
     # RISK OFF
     if vix > 20 and dxy > 104:
@@ -98,7 +123,7 @@ def sentiment(vix, dxy, btc):
         return (
             "🔴 Mercado defensivo.\n"
             "Hay miedo y fortaleza del dólar.\n"
-            "Mayor probabilidad de volatilidad o caídas."
+            "Mayor probabilidad de volatilidad."
         )
 
     # RISK ON
@@ -106,38 +131,45 @@ def sentiment(vix, dxy, btc):
 
         return (
             "🟢 Mercado con apetito por riesgo.\n"
-            "Condiciones más limpias para buscar compras."
+            "Condiciones favorables para compras."
         )
 
     return (
         "🟡 Mercado mixto.\n"
-        "No hay dirección clara todavía."
+        "No hay dirección clara."
     )
 
-# ================================
+# =========================================
 # SETUPS
-# ================================
+# =========================================
 
 def setup(price_now, resistance, support, sentiment_text):
 
     if price_now is None:
-        return "N/A"
+
+        return "🟡 DATOS NO DISPONIBLES"
 
     # LONG
-    if price_now > resistance and "🟢" in sentiment_text:
+    if (
+        price_now > resistance
+        and "🟢" in sentiment_text
+    ):
 
         return "🟢 LONG SETUP"
 
     # SHORT
-    if price_now < support and "🔴" in sentiment_text:
+    if (
+        price_now < support
+        and "🔴" in sentiment_text
+    ):
 
         return "🔴 SHORT SETUP"
 
     return "🟡 NO TRADE"
 
-# ================================
-# NEWS REALES
-# ================================
+# =========================================
+# NEWS
+# =========================================
 
 def get_news():
 
@@ -146,7 +178,7 @@ def get_news():
         url = (
             "https://newsapi.org/v2/everything?"
             "q=inflation OR Federal Reserve OR interest rates OR Nasdaq OR Bitcoin"
-            "&language=es"
+            "&language=en"
             "&sortBy=publishedAt"
             "&pageSize=3"
             f"&apiKey={NEWS_API_KEY}"
@@ -160,13 +192,20 @@ def get_news():
 
         for article in articles[:3]:
 
-            title = article.get("title", "Sin título")
+            title = article.get(
+                "title",
+                "Sin título"
+            )
 
-            news.append(f"• {title[:90]}")
+            news.append(
+                f"• {title[:90]}"
+            )
 
         while len(news) < 3:
 
-            news.append("• Sin noticia relevante")
+            news.append(
+                "• Sin noticia relevante"
+            )
 
         return news
 
@@ -178,31 +217,45 @@ def get_news():
             "• Error cargando noticias"
         ]
 
-# ================================
-# MINI GRÁFICO
-# ================================
+# =========================================
+# MINI GRÁFICOS
+# =========================================
 
-def create_chart(price_now, resistance, support, name):
+def create_chart(
+    price_now,
+    resistance,
+    support,
+    name
+):
 
     try:
 
-        fig, ax = plt.subplots()
+        if price_now is None:
+            return None
+
+        fig, ax = plt.subplots(
+            figsize=(6,4)
+        )
 
         simulated_data = [
+
             price_now * 0.98,
             price_now * 0.99,
             price_now,
             price_now * 1.01,
-            price_now
+            price_now * 1.005
+
         ]
 
         ax.plot(simulated_data)
 
+        # RESISTENCIA
         ax.axhline(
             resistance,
             linestyle="--"
         )
 
+        # SOPORTE
         ax.axhline(
             support,
             linestyle="--"
@@ -222,9 +275,9 @@ def create_chart(price_now, resistance, support, name):
 
         return None
 
-# ================================
-# BUILD MENSAJE
-# ================================
+# =========================================
+# BUILD BRIEFING
+# =========================================
 
 def build():
 
@@ -234,26 +287,44 @@ def build():
 
     session = get_session()
 
-    # DATOS
-    vix = price("%5EVIX")
-    dxy = price("DX-Y.NYB")
-    btc = price("BTC-USD")
-    nasdaq = price("^NDX")
-    gold = price("GC=F")
+    # =====================================
+    # ACTIVOS
+    # =====================================
 
+    vix = price("VIX")
+    dxy = price("DXY")
+    btc = price("BTC/USD")
+    nasdaq = price("IXIC")
+    gold = price("XAU/USD")
+    brent = price("BRENT")
+
+    # =====================================
     # CONTEXTO
+    # =====================================
+
     market_context = sentiment(
         vix,
         dxy,
         btc
     )
 
+    # =====================================
     # NIVELES
-    nsq_r, nsq_s = 18000, 17500
-    btc_r, btc_s = 70000, 65000
-    gold_r, gold_s = 2400, 2300
+    # =====================================
 
+    nsq_r = 18000
+    nsq_s = 17500
+
+    btc_r = 70000
+    btc_s = 65000
+
+    gold_r = 2400
+    gold_s = 2300
+
+    # =====================================
     # SETUPS
+    # =====================================
+
     nsq_setup = setup(
         nasdaq,
         nsq_r,
@@ -275,23 +346,42 @@ def build():
         market_context
     )
 
-    # DECISIÓN
-    if "LONG" in (nsq_setup + btc_setup):
+    # =====================================
+    # DECISIÓN FINAL
+    # =====================================
 
-        decision = "🟢 MERCADO OPERABLE LONG"
+    if "LONG" in (
+        nsq_setup + btc_setup
+    ):
 
-    elif "SHORT" in (nsq_setup + btc_setup):
+        decision = (
+            "🟢 Mercado operable LONG"
+        )
 
-        decision = "🔴 MERCADO OPERABLE SHORT"
+    elif "SHORT" in (
+        nsq_setup + btc_setup
+    ):
+
+        decision = (
+            "🔴 Mercado operable SHORT"
+        )
 
     else:
 
-        decision = "🟡 ESPERAR CONFIRMACIÓN"
+        decision = (
+            "🟡 Esperar confirmación"
+        )
 
-    # NOTICIAS
+    # =====================================
+    # NEWS
+    # =====================================
+
     news = get_news()
 
+    # =====================================
     # MENSAJE
+    # =====================================
+
     msg = f"""
 📊 MARKET BRIEFING PRO
 {session} | {now}
@@ -339,32 +429,52 @@ ORO → {gold_r} / {gold_s}
 
     return msg
 
-# ================================
+# =========================================
 # RUN
-# ================================
+# =========================================
 
 def run():
 
     # MENSAJE
     send(build())
 
-    # GRÁFICO NSQ100
-    nasdaq = price("^NDX")
+    # =====================================
+    # GRÁFICOS
+    # =====================================
 
-    chart = create_chart(
-        nasdaq,
-        18000,
-        17500,
-        "NSQ100"
-    )
+    assets = [
 
-    if chart:
+        ("IXIC", 18000, 17500, "NSQ100"),
 
-        send_photo(chart)
+        ("BTC/USD", 70000, 65000, "BTC"),
 
-# ================================
+        ("XAU/USD", 2400, 2300, "ORO")
+
+    ]
+
+    for (
+        symbol,
+        resistance,
+        support,
+        name
+    ) in assets:
+
+        asset_price = price(symbol)
+
+        chart = create_chart(
+            asset_price,
+            resistance,
+            support,
+            name
+        )
+
+        if chart:
+
+            send_photo(chart)
+
+# =========================================
 # START
-# ================================
+# =========================================
 
 if __name__ == "__main__":
 
