@@ -52,7 +52,7 @@ def send_photo(path):
         )
 
 # =========================================
-# TWELVE DATA PRICE
+# PRECIO
 # =========================================
 
 def price(symbol):
@@ -79,20 +79,126 @@ def price(symbol):
         return None
 
 # =========================================
-# NIVELES DINÁMICOS
+# DATOS 15M
 # =========================================
 
-def levels(price_now):
+def get_15m_data(symbol):
 
-    if price_now is None:
+    try:
 
-        return None, None
+        url = (
+            f"https://api.twelvedata.com/time_series?"
+            f"symbol={symbol}"
+            f"&interval=15min"
+            f"&outputsize=200"
+            f"&apikey={TWELVE_API_KEY}"
+        )
 
-    resistance = round(price_now * 1.01, 2)
+        data = requests.get(url).json()
 
-    support = round(price_now * 0.99, 2)
+        values = data.get("values")
 
-    return resistance, support
+        if values is None:
+            return None
+
+        closes = []
+
+        for candle in reversed(values):
+
+            closes.append(
+                float(candle["close"])
+            )
+
+        return closes
+
+    except:
+
+        return None
+
+# =========================================
+# EMA
+# =========================================
+
+def ema(data, period):
+
+    ema_values = []
+
+    multiplier = 2 / (period + 1)
+
+    sma = sum(data[:period]) / period
+
+    ema_values.append(sma)
+
+    for price_now in data[period:]:
+
+        new_ema = (
+            (price_now - ema_values[-1])
+            * multiplier
+        ) + ema_values[-1]
+
+        ema_values.append(new_ema)
+
+    return ema_values
+
+# =========================================
+# ESTRATEGIA EMA 55 / 144
+# =========================================
+
+def ema_strategy(symbol):
+
+    data = get_15m_data(symbol)
+
+    if data is None or len(data) < 150:
+
+        return (
+            "🟡 DATOS INSUFICIENTES",
+            None,
+            None,
+            None
+        )
+
+    ema55 = ema(data, 55)
+
+    ema144 = ema(data, 144)
+
+    current_price = data[-1]
+
+    current_ema55 = ema55[-1]
+
+    current_ema144 = ema144[-1]
+
+    # =====================================
+    # LONG
+    # =====================================
+
+    if (
+        current_price > current_ema55
+        and current_ema55 > current_ema144
+    ):
+
+        signal = "🟢 LONG"
+
+    # =====================================
+    # SHORT
+    # =====================================
+
+    elif (
+        current_price < current_ema55
+        and current_ema55 < current_ema144
+    ):
+
+        signal = "🔴 SHORT"
+
+    else:
+
+        signal = "🟡 NO TRADE"
+
+    return (
+        signal,
+        data,
+        ema55,
+        ema144
+    )
 
 # =========================================
 # SESIÓN
@@ -106,22 +212,20 @@ def get_session():
 
     hour = now.hour
 
-    # TOKYO
     if 19 <= hour or hour < 2:
 
         return "🌏 TOKYO SESSION"
 
-    # NEW YORK
     elif 8 <= hour < 12:
 
         return "🇺🇸 NEW YORK SESSION"
 
     else:
 
-        return "⏳ PRE-MARKET / TRANSICIÓN"
+        return "⏳ PRE-MARKET"
 
 # =========================================
-# CONTEXTO
+# SENTIMIENTO
 # =========================================
 
 def sentiment(vix, dxy, btc):
@@ -129,59 +233,26 @@ def sentiment(vix, dxy, btc):
     if None in (vix, dxy, btc):
 
         return (
-            "🟡 Mercado sin claridad.\n"
+            "🟡 Mercado mixto.\n"
             "Esperar confirmación."
         )
 
-    # RISK OFF
     if vix > 20 and dxy > 104:
 
         return (
             "🔴 Mercado defensivo.\n"
-            "Hay miedo y fortaleza del dólar.\n"
-            "Mayor probabilidad de volatilidad."
+            "Alta volatilidad."
         )
 
-    # RISK ON
     if vix < 15 and btc > 65000:
 
         return (
-            "🟢 Mercado con apetito por riesgo.\n"
-            "Condiciones favorables para compras."
+            "🟢 Mercado con apetito por riesgo."
         )
 
     return (
-        "🟡 Mercado mixto.\n"
-        "No hay dirección clara."
+        "🟡 Mercado lateral."
     )
-
-# =========================================
-# SETUPS
-# =========================================
-
-def setup(price_now, resistance, support, sentiment_text):
-
-    if price_now is None:
-
-        return "🟡 DATOS NO DISPONIBLES"
-
-    # LONG
-    if (
-        price_now > resistance
-        and "🟢" in sentiment_text
-    ):
-
-        return "🟢 LONG SETUP"
-
-    # SHORT
-    if (
-        price_now < support
-        and "🔴" in sentiment_text
-    ):
-
-        return "🔴 SHORT SETUP"
-
-    return "🟡 NO TRADE"
 
 # =========================================
 # NEWS
@@ -193,8 +264,8 @@ def get_news():
 
         url = (
             "https://newsapi.org/v2/everything?"
-            "q=inflation OR Federal Reserve OR interest rates OR Nasdaq OR Bitcoin"
-            "&language=es"
+            "q=Federal Reserve OR inflation OR Nasdaq OR Bitcoin"
+            "&language=en"
             "&sortBy=publishedAt"
             "&pageSize=3"
             f"&apiKey={NEWS_API_KEY}"
@@ -228,66 +299,80 @@ def get_news():
     except:
 
         return [
-            "• Error cargando noticias",
-            "• Error cargando noticias",
-            "• Error cargando noticias"
+            "• Error noticias",
+            "• Error noticias",
+            "• Error noticias"
         ]
 
 # =========================================
-# GRÁFICOS REALES 15M
+# GRÁFICO EMA
 # =========================================
 
-def create_chart(symbol, resistance, support, name):
+def create_chart(
+    name,
+    data,
+    ema55,
+    ema144
+):
 
     try:
 
-        url = (
-            f"https://api.twelvedata.com/time_series?"
-            f"symbol={symbol}"
-            f"&interval=15min"
-            f"&outputsize=20"
-            f"&apikey={TWELVE_API_KEY}"
-        )
-
-        data = requests.get(url).json()
-
-        values = data.get("values")
-
-        if values is None:
+        if (
+            data is None
+            or ema55 is None
+            or ema144 is None
+        ):
 
             return None
 
-        closes = []
-
-        for candle in reversed(values):
-
-            closes.append(
-                float(candle["close"])
-            )
+        plt.style.use(
+            "dark_background"
+        )
 
         fig, ax = plt.subplots(
-            figsize=(6,4)
+            figsize=(7,4)
         )
 
-        ax.plot(closes)
-
-        # RESISTENCIA
-        ax.axhline(
-            resistance,
-            linestyle="--"
+        ax.plot(
+            data[-100:],
+            linewidth=2,
+            label="PRECIO"
         )
 
-        # SOPORTE
-        ax.axhline(
-            support,
-            linestyle="--"
+        ax.plot(
+            range(
+                55,
+                55 + len(ema55[-100:])
+            ),
+            ema55[-100:],
+            linewidth=2,
+            label="EMA 55"
         )
 
-        ax.set_title(f"{name} 15M")
+        ax.plot(
+            range(
+                144,
+                144 + len(ema144[-100:])
+            ),
+            ema144[-100:],
+            linewidth=2,
+            label="EMA 144"
+        )
+
+        ax.set_title(
+            f"{name} | EMA 55 / 144"
+        )
+
+        ax.grid(True)
+
+        ax.legend()
 
         file_name = f"{name}.png"
 
-        plt.savefig(file_name)
+        plt.savefig(
+            file_name,
+            bbox_inches="tight"
+        )
 
         plt.close()
 
@@ -298,7 +383,7 @@ def create_chart(symbol, resistance, support, name):
         return None
 
 # =========================================
-# BUILD BRIEFING
+# BUILD
 # =========================================
 
 def build():
@@ -310,90 +395,63 @@ def build():
     session = get_session()
 
     # =====================================
-    # ACTIVOS
+    # MERCADO
     # =====================================
 
     vix = price("VIXY")
 
     dxy = price("DX")
 
-    btc = price("BTC/USD")
-
-    nasdaq = price("QQQ")
-
-    gold = price("XAU/USD")
-
-    brent = price("BRENT")
-
-    # =====================================
-    # CONTEXTO
-    # =====================================
+    btc_price = price("BTC/USD")
 
     market_context = sentiment(
         vix,
         dxy,
-        btc
+        btc_price
     )
 
     # =====================================
-    # NIVELES DINÁMICOS
+    # ESTRATEGIAS
     # =====================================
 
-    nsq_r, nsq_s = levels(nasdaq)
-
-    btc_r, btc_s = levels(btc)
-
-    gold_r, gold_s = levels(gold)
-
-    # =====================================
-    # SETUPS
-    # =====================================
-
-    nsq_setup = setup(
-        nasdaq,
-        nsq_r,
-        nsq_s,
-        market_context
+    nsq_signal, _, _, _ = ema_strategy(
+        "NASDAQ"
     )
 
-    btc_setup = setup(
-        btc,
-        btc_r,
-        btc_s,
-        market_context
+    btc_signal, _, _, _ = ema_strategy(
+        "BTC/USD"
     )
 
-    gold_setup = setup(
-        gold,
-        gold_r,
-        gold_s,
-        market_context
+    gold_signal, _, _, _ = ema_strategy(
+        "XAU/USD"
     )
 
     # =====================================
-    # DECISIÓN FINAL
+    # DECISIÓN
     # =====================================
 
-    if "LONG" in (
-        nsq_setup + btc_setup
+    if (
+        "🟢" in nsq_signal
+        or "🟢" in btc_signal
     ):
 
         decision = (
-            "🟢 Mercado operable LONG"
+            "🟢 Sesgo alcista."
         )
 
-    elif "SHORT" in (
-        nsq_setup + btc_setup
+    elif (
+        "🔴" in nsq_signal
+        or "🔴" in btc_signal
     ):
 
         decision = (
-            "🔴 Mercado operable SHORT"
+            "🔴 Sesgo bajista."
         )
 
     else:
 
         decision = (
-            "🟡 Esperar confirmación"
+            "🟡 Esperar confirmación."
         )
 
     # =====================================
@@ -415,38 +473,35 @@ def build():
 
 {market_context}
 
-VIX: {vix}
-DXY: {dxy}
+VIX → {vix}
+DXY → {dxy}
 
 ━━━━━━━━━━━━━━━
-🚨 SETUPS
+🚨 EMA 55 / 144
 
-NSQ100 → {nsq_setup}
-BTC → {btc_setup}
-ORO → {gold_setup}
+NSQ100 → {nsq_signal}
 
-━━━━━━━━━━━━━━━
-📉 NIVELES CLAVE
+BTC → {btc_signal}
 
-NSQ100 → {nsq_r} / {nsq_s}
-BTC → {btc_r} / {btc_s}
-ORO → {gold_r} / {gold_s}
+ORO → {gold_signal}
 
 ━━━━━━━━━━━━━━━
 📰 MACRO HOY
 
 {news[0]}
+
 {news[1]}
+
 {news[2]}
 
 ━━━━━━━━━━━━━━━
-⚠️ DECISIÓN FINAL
+⚠️ DECISIÓN
 
 {decision}
 
-• Solo entrar con confirmación
-• Evitar operar noticias fuertes
-• Reducir riesgo si VIX alto
+• Esperar confirmación
+• Evitar sobreoperar
+• Riesgo bajo en noticias
 
 ━━━━━━━━━━━━━━━
 """
@@ -459,16 +514,11 @@ ORO → {gold_r} / {gold_s}
 
 def run():
 
-    # MENSAJE
     send(build())
-
-    # =====================================
-    # ACTIVOS GRÁFICOS
-    # =====================================
 
     assets = [
 
-        ("QQQ", "NSQ100"),
+        ("NASDAQ", "NSQ100"),
 
         ("BTC/USD", "BTC"),
 
@@ -478,17 +528,15 @@ def run():
 
     for symbol, name in assets:
 
-        asset_price = price(symbol)
-
-        resistance, support = levels(
-            asset_price
+        signal, data, ema55, ema144 = ema_strategy(
+            symbol
         )
 
         chart = create_chart(
-            symbol,
-            resistance,
-            support,
-            name
+            name,
+            data,
+            ema55,
+            ema144
         )
 
         if chart:
