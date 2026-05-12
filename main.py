@@ -160,21 +160,21 @@ def get_news():
 
         for article in articles[:3]:
 
-            title = article["title"]
+            title = article.get("title", "Sin título")
 
             news.append(f"• {title[:90]}")
 
-        if len(news) == 0:
+        while len(news) < 3:
 
-            return [
-                "• Sin noticias relevantes"
-            ]
+            news.append("• Sin noticia relevante")
 
         return news
 
     except:
 
         return [
+            "• Error cargando noticias",
+            "• Error cargando noticias",
             "• Error cargando noticias"
         ]
 
